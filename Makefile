@@ -1,10 +1,19 @@
-CC=gcc
-CFlags = -I include/, -WWALL, -g, -Wextra,
-DEPS = hellomake.h 
-OBJ = hellomake.o 
+vpath %.o bin
+vpath %.c src
+vpath %.h include
+CFLAGS = -Wextra -Wall -Wformat=2 -std=c11 -g -W
 
-%.o: %.c $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS)
+OBJS = main.o
+SRCS = main.c
 
-hellomake: hellomake.o 
-	$(CC) -o hellomake hellomake.o 
+main : main.o 
+	gcc $(CFLAGS) $(addprefix bin/, $(OBJS)) -o maketest
+
+main.o : main.c
+	gcc -c $(addprefix src/, $(SRCS)) -o bin/main.o
+
+
+
+
+
+
