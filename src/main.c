@@ -28,7 +28,7 @@ struct addrinfo* initaddr(){
   hints.ai_addr = NULL;
   hints.ai_next = NULL;
 
-  s = getaddrinfo(NULL, "0000", &hints, &result);
+  s = getaddrinfo(NULL, "10000", &hints, &result);
 
   if (s != 0)
     printf("%s\n", "error in getaddrinfo");

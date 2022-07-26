@@ -6,6 +6,10 @@ CFLAGS = -Wextra -Wall -Wformat=2 -std=c11 -g -W
 OBJS = main.o
 SRCS = main.c
 
+.PHONY: clean
+run:
+	./main
+
 main : main.o 
 	gcc $(CFLAGS) $(addprefix bin/, $(OBJS)) -o main 
 
