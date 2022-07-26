@@ -7,7 +7,7 @@ OBJS = main.o
 SRCS = main.c
 
 main : main.o 
-	gcc $(CFLAGS) $(addprefix bin/, $(OBJS)) -o maketest
+	gcc $(CFLAGS) $(addprefix bin/, $(OBJS)) -o main 
 
 main.o : main.c
 	gcc -c $(addprefix src/, $(SRCS)) -o bin/main.o
