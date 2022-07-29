@@ -25,7 +25,7 @@ int main(){
   socklen_t addr_size;
   struct addrinfo hints, *res, *p;
   int readfd, recvfd, status;
-  int connectedsize = 0;
+  int connectedsize = 1;
   int connected[10];
   char ipstr[INET6_ADDRSTRLEN];
 
@@ -56,14 +56,12 @@ int main(){
   if((bind(readfd,res->ai_addr,res->ai_addrlen)< 0))
     printf("bind socket error: %s\n", strerror(errno));
 
+  freeaddrinfo(result);
+
   if(listen(readfd, 3) < 0) 
     printf("listen socket error: %s\n", strerror(errno));
   
   printf("%s\n", "Server is listening for a connection...");
-
-  if((recvfd = accept(readfd,(struct sockaddr *) &peer_addr,&addr_size ))< 0)
-    printf("accept socket error: %s\n", strerror(errno));
-  printf("%s\n", "Server Connection recieved");
 
   char msg[100];
   memset(msg,0,sizeof(msg));
@@ -71,13 +69,16 @@ int main(){
   int bytes_sent = 0;
 
   connected[0] = readfd; 
-  connectedsize++;
   while(1){
     // ADD all current connections (including server)
     // to the select set
+    memset(msg,0,sizeof(msg));
     for(int i =0; i< connectedsize;i++){
       FD_SET(connected[i], &fileset);
     }
+    timev.tv_sec = 3;
+    timev.tv_usec = 0;
+
     retval = select(FD_SETSIZE,&fileset, NULL, NULL, &timev);
     if (retval == -1){
       printf("Select detected no message");
