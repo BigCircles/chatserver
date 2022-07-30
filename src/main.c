@@ -19,7 +19,7 @@ int main(){
   // Select variables
   fd_set fileset;
   struct timeval timev;
-  int retval;
+  int ret_code;
   // Socket Variables
   struct sockaddr my_addr, peer_addr;
   socklen_t addr_size;
@@ -27,6 +27,7 @@ int main(){
   int readfd, recvfd, status;
   int connectedsize = 1;
   int connected[10];
+
 
   struct addrinfo *test;
 
@@ -76,14 +77,28 @@ int main(){
     timev.tv_sec = 3;
     timev.tv_usec = 0;
 
-    retval = select(FD_SETSIZE,&fileset, NULL, NULL, &timev);
-    //
+    ret_code = select(FD_SETSIZE,&fileset, NULL, NULL, &timev);
+    // Select Error
+    if(ret_code == -1){
+      printf("%s\n", strerror(errno));
+      continue;
+    }
     if(FD_ISSET(connected[0], &fileset)){
       addr_size = sizeof peer_addr;
       if((recvfd = accept(readfd,(struct sockaddr *) &peer_addr,&addr_size ))< 0)
         printf("accept socket error: %s\n", strerror(errno));
+      connected[connectedsize] = recvfd;
+      connectedsize++;
+
 
       printf("%s\n", "Server Connection recieved");
+
+      // Get Connected client's IP
+      char addrstorage[20];
+      struct sockaddr_in *ip4 = (struct sockaddr_in *) &peer_addr;
+      inet_ntop(AF_INET,&(ip4->sin_addr), addrstorage, sizeof(addrstorage));
+      printf("addrstorage is: %s\n", addrstorage);
+
       connected[connectedsize] = recvfd;
       connectedsize++;
     }
@@ -92,6 +107,7 @@ int main(){
       if(FD_ISSET(connected[x], &fileset)){
         // Recv msg from client
         recv(connected[1], msg,RECV_BUF_SIZE ,0);
+        printf("%s\n", msg);
         //Tokenize msg from client (Break packet into header / msg and 
         // Parse msg from client
         // for now print msg to client for debugging
