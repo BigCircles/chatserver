@@ -11,6 +11,7 @@
 #include <sys/select.h>
 
 #define PORT "8080"
+#define RECV_BUF_SIZE 500
 
 struct addrinfo* initaddr(char* port);
 
@@ -19,15 +20,15 @@ int main(){
   fd_set fileset;
   struct timeval timev;
   int retval;
-  //Select Variables End
-  struct addrinfo *result; 
+  // Socket Variables
   struct sockaddr my_addr, peer_addr;
   socklen_t addr_size;
   struct addrinfo hints, *res, *p;
   int readfd, recvfd, status;
   int connectedsize = 1;
   int connected[10];
-  char ipstr[INET6_ADDRSTRLEN];
+
+  struct addrinfo *test;
 
   if((readfd = socket(AF_INET, SOCK_STREAM, 0)) <0)
     printf("socket creation error: %s\n", strerror(errno));
@@ -41,14 +42,10 @@ int main(){
   //
   memset(connected, 0, sizeof(connected));
   memset(&hints, 0, sizeof hints);
-  hints.ai_family = AF_INET; // AF_INET or AF_INET6 to force version
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE;
 
-  if ((status = getaddrinfo(NULL, PORT, &hints, &res)) != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
-        return 2;
-    }
+  res = initaddr(PORT);
+  if (res == NULL)
+    printf("Addrinfo Error: %s\n", "Something went wrong: NULL");
 
   setsockopt(readfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
   setsockopt(readfd, SOL_SOCKET, SO_REUSEPORT, &(int){1}, sizeof(int));
@@ -56,14 +53,14 @@ int main(){
   if((bind(readfd,res->ai_addr,res->ai_addrlen)< 0))
     printf("bind socket error: %s\n", strerror(errno));
 
-  freeaddrinfo(result);
+  freeaddrinfo(res);
 
   if(listen(readfd, 3) < 0) 
     printf("listen socket error: %s\n", strerror(errno));
   
   printf("%s\n", "Server is listening for a connection...");
 
-  char msg[100];
+  char msg[RECV_BUF_SIZE];
   memset(msg,0,sizeof(msg));
   int len = strlen(msg);
   int bytes_sent = 0;
@@ -80,25 +77,25 @@ int main(){
     timev.tv_usec = 0;
 
     retval = select(FD_SETSIZE,&fileset, NULL, NULL, &timev);
-    if (retval == -1){
-      printf("Select detected no message");
-      printf("%d\n", retval);
-    }
-    else{
-      if(FD_ISSET(connected[0], &fileset)){
-        addr_size = sizeof peer_addr;
-        if((recvfd = accept(readfd,(struct sockaddr *) &peer_addr,&addr_size ))< 0)
-          printf("accept socket error: %s\n", strerror(errno));
+    //
+    if(FD_ISSET(connected[0], &fileset)){
+      addr_size = sizeof peer_addr;
+      if((recvfd = accept(readfd,(struct sockaddr *) &peer_addr,&addr_size ))< 0)
+        printf("accept socket error: %s\n", strerror(errno));
 
-        printf("%s\n", "Server Connection recieved");
-        connected[connectedsize] = recvfd;
-        connectedsize++;
-      }else if(FD_ISSET(connected[1], &fileset)){
-        recv(connected[1], msg, 100,0);
-        printf("Client 1: %s\n", msg);
-      }else if(FD_ISSET(connected[2], &fileset)){
-        recv(connected[2], msg, 100,0);
-        printf("Client 2: %s\n", msg);
+      printf("%s\n", "Server Connection recieved");
+      connected[connectedsize] = recvfd;
+      connectedsize++;
+    }
+    // Check client sockets for activity
+    for(int x =1; x < connectedsize; x++){
+      if(FD_ISSET(connected[x], &fileset)){
+        // Recv msg from client
+        recv(connected[1], msg,RECV_BUF_SIZE ,0);
+        //Tokenize msg from client (Break packet into header / msg and 
+        // Parse msg from client
+        // for now print msg to client for debugging
+
       }
     }
   }
@@ -120,6 +117,8 @@ struct addrinfo* initaddr(char* port){
   hints.ai_flags = AI_PASSIVE;
 
   s = getaddrinfo(NULL, port, &hints, &result);
+  if (s != 0)
+    return NULL;
 
   return result;
 }
