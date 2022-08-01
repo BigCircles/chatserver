@@ -23,7 +23,6 @@ struct addrinfo* initaddr(char* port){
 void getipaddr(struct sockaddr* toconvert, char* ip4dest, int buflen){
    // Get Connected client's IP
   int len = strlen(ip4dest);
-  printf("%d\n", len);
   struct sockaddr_in *ip4 = (struct sockaddr_in *)toconvert;
   inet_ntop(AF_INET,&ip4->sin_addr, ip4dest, buflen);
 }

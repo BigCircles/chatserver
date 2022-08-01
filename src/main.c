@@ -16,7 +16,7 @@
 #define PORT "8080"
 #define RECV_BUF_SIZE 500
 
-void setfdset(struct timeval *time,int conn[], int maxsize, fd_set *set);
+void setfdset(struct timeval *time,struct peerinfo conn[], int maxsize, fd_set *set);
 int createlistensocket(struct addrinfo* results);
 
 int main(){
@@ -29,20 +29,20 @@ int main(){
   socklen_t addr_size;
   struct addrinfo hints, *res;
   int readfd, recvfd, status;
-  int connected[10];
+  //EXPERIMENTAL
+  struct peerinfo connections[10] = {0};
   // Select setup
   FD_ZERO(&fileset);
   FD_SET(readfd, &fileset);
   timev.tv_sec = 1;
   timev.tv_usec = 0;
   //Recieved msg variables 
-  char msg[RECV_BUF_SIZE];
-  int len = strlen(msg);
   int bytes_sent = 0;
   
-  memset(connected, 0, sizeof(connected));
+  for(int x = 0; x < 10; x++){
+    memset(&connections[x].file_desc, 0, sizeof(connections[x].file_desc));
+  }
   memset(&hints, 0, sizeof hints);
-  memset(msg,0,sizeof(msg));
 
   if((res = initaddr(PORT)) == NULL)
     printf("Addrinfo Error: %s\n", "Something went wrong: NULL");
@@ -51,11 +51,11 @@ int main(){
   freeaddrinfo(res);
   
   printf("%s\n", "Server is listening for a connection...");
-  connected[0] = readfd; 
+  //connected[0] = readfd; 
+  connections[0].file_desc = readfd;
 
   while(1){
-    memset(msg,0,sizeof(msg));
-    setfdset(&timev, connected, 10, &fileset);
+    setfdset(&timev, connections, 10, &fileset);
 
     status = select(FD_SETSIZE,&fileset, NULL, NULL, &timev);
     if(status == -1){
@@ -64,15 +64,17 @@ int main(){
     }
   
     // IF NEW CONNECTION DETECTED
-    if(FD_ISSET(connected[0], &fileset)){
+    if(FD_ISSET(connections[0].file_desc, &fileset)){
       addr_size = sizeof peer_addr;
       if((recvfd = accept(readfd,(struct sockaddr *) &peer_addr,&addr_size ))< 0){
         printf("accept socket error: %s\n", strerror(errno));
         return 1;
       }
       for(int x =1; x <10;x++){
-        if(connected[x] == 0){
-          connected[x] = recvfd;
+        if(connections[x].file_desc == 0){
+          connections[x].file_desc = recvfd;
+          connections[x].address = peer_addr;
+          connections[x].address_len = addr_size;
           break;
         }
       }
@@ -84,13 +86,15 @@ int main(){
     }
     // Check client sockets for activity
     for(int x =1; x < 10; x++){
-      if(FD_ISSET(connected[x], &fileset)){
-        bytes_sent = recv(connected[x], msg,RECV_BUF_SIZE ,0);
+      if(FD_ISSET(connections[x].file_desc, &fileset)){
+        memset(connections[x].message, 0, sizeof(connections[x].message));
+        bytes_sent = recv(connections[x].file_desc, connections[x].message,PEERMSGLEN, 0) ;
         if(bytes_sent == 0){
-          connected[x] = 0;
+          connections[x].file_desc = 0;
+          printf("Client %d: Connection closed\n", x);
           break;
         }
-        printf("Client %d: %s\n", x,  msg);
+        printf("Client %d: %s\n", x, connections[x].message);
         //Tokenize msg from client (Break packet into header / msg and 
         // Parse msg from client
         // for now print msg to client for debugging
@@ -98,16 +102,16 @@ int main(){
     }
   }
   close(readfd);
-  for(int x; x < 10; x++){
-   close(connected[x]); 
+  close (recvfd);
+  for(int x=0; x < 10; x++){
+   close(connections[x].file_desc); 
   }
- // close (recvfd);
   return 0;
 }
 
-void setfdset(struct timeval *time,int conn[], int maxsize, fd_set *set){
+void setfdset(struct timeval *time,struct peerinfo conn[], int maxsize, fd_set *set){
     for(int i =0; i< maxsize;i++){
-      FD_SET(conn[i], set);
+      FD_SET(conn[i].file_desc, set);
     }
     time->tv_sec = 3;
     time->tv_usec = 0;
