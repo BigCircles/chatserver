@@ -9,11 +9,12 @@
 #include <errno.h>
 #include <arpa/inet.h>
 #include <sys/select.h>
+#include "../include/ircsocket.h"
 
 #define PORT "8080"
 #define RECV_BUF_SIZE 500
 
-struct addrinfo* initaddr(char* port);
+void setfdset(struct timeval *time,int conn[], int maxsize, fd_set *set);
 
 int main(){
   // Select variables
@@ -23,13 +24,9 @@ int main(){
   // Socket Variables
   struct sockaddr my_addr, peer_addr;
   socklen_t addr_size;
-  struct addrinfo hints, *res, *p;
+  struct addrinfo hints, *res;
   int readfd, recvfd, status;
-  int connectedsize = 1;
   int connected[10];
-
-
-  struct addrinfo *test;
 
   if((readfd = socket(AF_INET, SOCK_STREAM, 0)) <0)
     printf("socket creation error: %s\n", strerror(errno));
@@ -40,12 +37,11 @@ int main(){
   timev.tv_sec = 1;
   timev.tv_usec = 0;
   // End select setup
-  //
+  
   memset(connected, 0, sizeof(connected));
   memset(&hints, 0, sizeof hints);
 
-  res = initaddr(PORT);
-  if (res == NULL)
+  if((res = initaddr(PORT)) == NULL)
     printf("Addrinfo Error: %s\n", "Something went wrong: NULL");
 
   setsockopt(readfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
@@ -68,75 +64,62 @@ int main(){
 
   connected[0] = readfd; 
   while(1){
-    // ADD all current connections (including server)
-    // to the select set
+
     memset(msg,0,sizeof(msg));
-    for(int i =0; i< connectedsize;i++){
-      FD_SET(connected[i], &fileset);
-    }
-    timev.tv_sec = 3;
-    timev.tv_usec = 0;
+    setfdset(&timev, connected, 10, &fileset);
 
     ret_code = select(FD_SETSIZE,&fileset, NULL, NULL, &timev);
-    // Select Error
-    if(ret_code == -1){
-      printf("%s\n", strerror(errno));
+    if(ret_code  == -1){
+      printf("Select error: %s\n", strerror(errno));
       continue;
     }
+
     if(FD_ISSET(connected[0], &fileset)){
       addr_size = sizeof peer_addr;
       if((recvfd = accept(readfd,(struct sockaddr *) &peer_addr,&addr_size ))< 0)
         printf("accept socket error: %s\n", strerror(errno));
-      connected[connectedsize] = recvfd;
-      connectedsize++;
 
-
+      for(int x =1; x <10;x++){
+        if(connected[x] == 0){
+          connected[x] = recvfd;
+          break;
+        }
+      }
       printf("%s\n", "Server Connection recieved");
 
-      // Get Connected client's IP
       char addrstorage[20];
       struct sockaddr_in *ip4 = (struct sockaddr_in *) &peer_addr;
       inet_ntop(AF_INET,&(ip4->sin_addr), addrstorage, sizeof(addrstorage));
       printf("addrstorage is: %s\n", addrstorage);
-
-      connected[connectedsize] = recvfd;
-      connectedsize++;
     }
     // Check client sockets for activity
-    for(int x =1; x < connectedsize; x++){
+    for(int x =1; x < 10; x++){
       if(FD_ISSET(connected[x], &fileset)){
-        // Recv msg from client
-        recv(connected[1], msg,RECV_BUF_SIZE ,0);
-        printf("%s\n", msg);
+        bytes_sent = recv(connected[x], msg,RECV_BUF_SIZE ,0);
+        if(bytes_sent == 0){
+          connected[x] = 0;
+          break;
+        }
+        printf("Client %d: %s\n", x,  msg);
         //Tokenize msg from client (Break packet into header / msg and 
         // Parse msg from client
         // for now print msg to client for debugging
-
       }
     }
   }
   close(readfd);
-  close (recvfd);
+  for(int x; x < 10; x++){
+   close(connected[x]); 
+  }
+ // close (recvfd);
   return 0;
 }
 
-struct addrinfo* initaddr(char* port){
-  int s;
-  struct addrinfo hints, *result;
-
-  result = NULL;
-
-  memset(&hints, 0, sizeof(hints));
-
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE;
-
-  s = getaddrinfo(NULL, port, &hints, &result);
-  if (s != 0)
-    return NULL;
-
-  return result;
+void setfdset(struct timeval *time,int conn[], int maxsize, fd_set *set){
+    for(int i =0; i< maxsize;i++){
+      FD_SET(conn[i], set);
+    }
+    time->tv_sec = 3;
+    time->tv_usec = 0;
 }
 
- 
