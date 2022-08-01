@@ -1,6 +1,4 @@
 #include "../include/ircsocket.h"
-#include <string.h>
-#include <sys/socket.h>
 
 
 struct addrinfo* initaddr(char* port){
@@ -22,18 +20,12 @@ struct addrinfo* initaddr(char* port){
   return result;
 }
 
-char* getipaddr(struct sockaddr toconvert){
+void getipaddr(struct sockaddr* toconvert, char* ip4dest, int buflen){
    // Get Connected client's IP
-   char *ip4address = NULL;
-   const int SIZE = 20;
-   ip4address = malloc(sizeof(char) *SIZE);
-   memset(ip4address, 0, SIZE);
-
-  struct sockaddr_in *ip4 = (struct sockaddr_in *) &toconvert;
-  inet_ntop(AF_INET,&(ip4->sin_addr), ip4address, SIZE);
-  printf("%s\n", ip4address);
-  return ip4address;
-
+  int len = strlen(ip4dest);
+  printf("%d\n", len);
+  struct sockaddr_in *ip4 = (struct sockaddr_in *)toconvert;
+  inet_ntop(AF_INET,&ip4->sin_addr, ip4dest, buflen);
 }
 
 
