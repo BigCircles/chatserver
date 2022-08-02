@@ -25,17 +25,13 @@ int main(){
   struct timeval timev;
   int ret_code;
   // Socket Variables
-  struct sockaddr my_addr, peer_addr;
+  struct sockaddr peer_addr;
   socklen_t addr_size;
   struct addrinfo hints, *res;
   int readfd, recvfd, status;
-  //EXPERIMENTAL
   struct peerinfo connections[10] = {0};
   // Select setup
   FD_ZERO(&fileset);
-  FD_SET(readfd, &fileset);
-  timev.tv_sec = 1;
-  timev.tv_usec = 0;
   //Recieved msg variables 
   int bytes_sent = 0;
   
@@ -84,9 +80,8 @@ int main(){
       getipaddr(&peer_addr, ip4addr, 16);
       printf("%s\n", ip4addr);
     }
-    // Check client sockets for activity
-    for(int x =1; x < 10; x++){
-      if(FD_ISSET(connections[x].file_desc, &fileset)){
+    // CLIENT SOCKET ACTIVITY
+    for(int x =1; x < 10; x++){ if(FD_ISSET(connections[x].file_desc, &fileset)){
         memset(connections[x].message, 0, sizeof(connections[x].message));
         bytes_sent = recv(connections[x].file_desc, connections[x].message,PEERMSGLEN, 0) ;
         if(bytes_sent == 0){
