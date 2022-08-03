@@ -15,9 +15,11 @@
 
 #define PORT "8080"
 #define RECV_BUF_SIZE 500
+#define MAXCONNECTIONS 10
 
 void setfdset(struct timeval *time,struct peerinfo conn[], int maxsize, fd_set *set);
 int createlistensocket(struct addrinfo* results);
+void acceptnewconn(struct peerinfo peers[MAXCONNECTIONS]);
 
 int main(){
   // Select variables
@@ -29,7 +31,7 @@ int main(){
   socklen_t addr_size;
   struct addrinfo hints, *res;
   int readfd, recvfd, status;
-  struct peerinfo connections[10] = {0};
+  struct peerinfo connections[MAXCONNECTIONS] = {0};
   // Select setup
   FD_ZERO(&fileset);
   //Recieved msg variables 
@@ -44,10 +46,8 @@ int main(){
     printf("Addrinfo Error: %s\n", "Something went wrong: NULL");
 
   readfd = createlistensocket(res);
-  freeaddrinfo(res);
-  
   printf("%s\n", "Server is listening for a connection...");
-  //connected[0] = readfd; 
+  freeaddrinfo(res);
   connections[0].file_desc = readfd;
 
   while(1){
@@ -58,30 +58,13 @@ int main(){
       fprintf(stderr, "Select error: %s\n", strerror(errno));
       continue;
     }
-  
-    // IF NEW CONNECTION DETECTED
+    //  NEW SERVER CONNECTION DETECTED 
     if(FD_ISSET(connections[0].file_desc, &fileset)){
-      addr_size = sizeof peer_addr;
-      if((recvfd = accept(readfd,(struct sockaddr *) &peer_addr,&addr_size ))< 0){
-        printf("accept socket error: %s\n", strerror(errno));
-        return 1;
-      }
-      for(int x =1; x <10;x++){
-        if(connections[x].file_desc == 0){
-          connections[x].file_desc = recvfd;
-          connections[x].address = peer_addr;
-          connections[x].address_len = addr_size;
-          break;
-        }
-      }
-      printf("%s\n", "Server Connection recieved");
-
-      char ip4addr[16] = "";
-      getipaddr(&peer_addr, ip4addr, 16);
-      printf("%s\n", ip4addr);
+      acceptnewconn(connections);
     }
     // CLIENT SOCKET ACTIVITY
-    for(int x =1; x < 10; x++){ if(FD_ISSET(connections[x].file_desc, &fileset)){
+    for(int x =1; x < 10; x++){ 
+      if(FD_ISSET(connections[x].file_desc, &fileset)){
         memset(connections[x].message, 0, sizeof(connections[x].message));
         bytes_sent = recv(connections[x].file_desc, connections[x].message,PEERMSGLEN, 0) ;
         if(bytes_sent == 0){
@@ -90,9 +73,7 @@ int main(){
           break;
         }
         printf("Client %d: %s\n", x, connections[x].message);
-        //Tokenize msg from client (Break packet into header / msg and 
-        // Parse msg from client
-        // for now print msg to client for debugging
+
       }
     }
   }
@@ -132,3 +113,32 @@ int createlistensocket(struct addrinfo* results){
   return listensocket;
 }
 
+void acceptnewconn(struct peerinfo peers[MAXCONNECTIONS]){
+    // IF NEW CONNECTION DETECTED
+  int recvfd = 0;
+  struct sockaddr peer_addr;
+  socklen_t addr_size;
+  addr_size = sizeof peer_addr;
+
+    //CONNECTIONS[0] IS always host
+    if((recvfd = accept(peers[0].file_desc,(struct sockaddr *) &peer_addr,&addr_size ))< 0){
+      printf("accept socket error: %s\n", strerror(errno));
+      return;
+    }
+
+    for(int x =1; x <MAXCONNECTIONS;x++){
+      if(peers[x].file_desc == 0){
+        peers[x].file_desc = recvfd;
+        peers[x].address = peer_addr;
+        peers[x].address_len = addr_size;
+        break;
+      }
+        char* servfullmsg = "Connection reject, server full!";
+        fprintf(stderr, "%s\n", servfullmsg);
+        send(recvfd, servfullmsg, strlen(servfullmsg) ,0);
+    }
+    printf("%s\n", "Server Connection recieved");
+    char ip4addr[16] = "";
+    getipaddr(&peer_addr, ip4addr, 16);
+    printf("%s\n", ip4addr);
+}
