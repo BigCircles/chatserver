@@ -34,7 +34,8 @@ int main(){
   int bytes_sent = 0;
   
   for(int x = 0; x < 10; x++){
-    memset(&connections[x].file_desc, 0, sizeof(connections[x].file_desc));
+    //memset(&connections[x].file_desc, 0, sizeof(connections[x].file_desc));
+    memset(&connections[x].file_desc, 0, sizeof(int));
   }
   memset(&hints, 0, sizeof hints);
 
@@ -61,7 +62,8 @@ int main(){
     // CLIENT SOCKET ACTIVITY
     for(int x =1; x < 10; x++){ 
       if(FD_ISSET(connections[x].file_desc, &fileset)){
-        memset(connections[x].message, 0, sizeof(connections[x].message));
+        // max msg size of client
+        memset(connections[x].message, 0, 540);
         bytes_sent = recv(connections[x].file_desc, connections[x].message,PEERMSGLEN, 0) ;
         if(bytes_sent == 0){
           connections[x].file_desc = 0;
