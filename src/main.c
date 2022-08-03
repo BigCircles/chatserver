@@ -14,7 +14,6 @@
 #include "../include/peer_packet.h"
 
 #define PORT "8080"
-#define RECV_BUF_SIZE 500
 #define MAXCONNECTIONS 10
 
 void setfdset(struct timeval *time,struct peerinfo conn[], int maxsize, fd_set *set);
@@ -25,10 +24,7 @@ int main(){
   // Select variables
   fd_set fileset;
   struct timeval timev;
-  int ret_code;
   // Socket Variables
-  struct sockaddr peer_addr;
-  socklen_t addr_size;
   struct addrinfo hints, *res;
   int readfd, recvfd, status;
   struct peerinfo connections[MAXCONNECTIONS] = {0};
