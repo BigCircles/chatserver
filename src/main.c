@@ -64,8 +64,9 @@ int main(){
       if(FD_ISSET(connections[x].file_desc, &fileset)){
         // max msg size of client
         memset(connections[x].message, 0, 540);
-        bytes_sent = recv(connections[x].file_desc, connections[x].message,PEERMSGLEN, 0) ;
+        bytes_sent = recv(connections[x].file_desc, connections[x].message,MESSAGELEN, 0) ;
         if(bytes_sent == 0){
+          close(connections[x].file_desc);
           connections[x].file_desc = 0;
           printf("Client %d: Connection closed\n", x);
           break;
@@ -76,7 +77,7 @@ int main(){
     }
   }
   close(readfd);
-  close (recvfd);
+  close(recvfd);
   for(int x=0; x < 10; x++){
    close(connections[x].file_desc); 
   }
