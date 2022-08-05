@@ -1,5 +1,7 @@
 #include "../include/ircsocket.h"
 #include <netdb.h>
+#include <stdio.h>
+#include <string.h>
 
 
 struct addrinfo* initaddr(char* port){
@@ -35,23 +37,39 @@ RETURN: a char* containing the key:value pairs of time and also leng of msg.
 Be aware that this does need to managed with free().
  * */
 char* getheaderinfo(char* message){
+  //Time variables
   char* currtime;
+  char* currtimeheader;
+  // msglen variables
+  char* msglenheader;
   char* msglen;
-  char* timeheader;
-  char* lengheader;
+  msglen = malloc(sizeof(char) * 3);
   int len = 0;
+  //Return variables
+  char* headerstring = NULL;
+  int stringlength = 0;
 
   time_t tm = time(NULL);
   currtime = ctime(&tm);
+  printf("ctime call is: %s\n", currtime);
+  currtimeheader = setheaderline("time", currtime);
 
   len = strlen(message);
-  return currtime;
+  sprintf(msglen, "%d", len);
+  msglenheader = (setheaderline("length", msglen));
+
+  stringlength = (strlen(currtimeheader) + strlen(msglenheader));
+  headerstring = malloc(sizeof(char) * stringlength+1);
+  strcat(headerstring, currtimeheader);
+  strcat(headerstring, msglenheader);
+  return headerstring;
 }
 
 char* setheaderline(char* key, char* value){
   int size = 32;
   int index = 0;
   char* line = malloc(sizeof(char) * size);
+  memset(line, 0, size);
   if (line == NULL)
     fprintf(stderr, "Set Header Line, Malloc Error");
   char* cursor = line;
@@ -82,8 +100,8 @@ char* setheaderline(char* key, char* value){
      line = realloc(line, (size));
    }
  }
- *cursor = '\n';
- cursor++;
+ //*cursor = '\n';
+ //cursor++;
  *cursor = '\0'; 
  return line;
 }
